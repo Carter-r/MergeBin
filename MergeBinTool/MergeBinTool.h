@@ -22,7 +22,7 @@ private slots:
 	void fileOpen();
 
 private:
-    Ui::MergeBinToolClass *ui;
+    Ui::MergeBinToolClass ui;
 
     map<int, FileInfo*> mapFileInfo;
 };
