@@ -11,3 +11,8 @@ FileInfo::~FileInfo()
 {
 
 }
+
+std::string FileInfo::getFileName()
+{
+	return nFileName;
+}

@@ -1,4 +1,6 @@
 <RCC>
-    <qresource prefix="MergeBinTool">
-    </qresource>
+  <qresource prefix="MergeBinTool"/>
+  <qresource prefix="image">
+    <file>resource/delete.png</file>
+  </qresource>
 </RCC>

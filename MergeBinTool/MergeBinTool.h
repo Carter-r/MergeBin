@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QtWidgets/QMainWindow>
+#include <QDropEvent>
 #include "ui_MergeBinTool.h"
 #include "FileInfo.h"
 
@@ -14,15 +15,21 @@ public:
     MergeBinTool(QWidget *parent = nullptr);
     ~MergeBinTool();
 
+    void dragEnterEvent(QDragEnterEvent* event) Q_DECL_OVERRIDE;
+    void dropEvent(QDropEvent* event) Q_DECL_OVERRIDE;
+
 private:
     void initTableFileInfo();
 	bool load(const QString& fileName);
+    bool checkFileExist(const QString& fileName);
 
 private slots:
 	void fileOpen();
+	void fileDelete();
+	void mergeBinFile();
 
 private:
     Ui::MergeBinToolClass ui;
 
-    map<int, FileInfo*> mapFileInfo;
+    vector<FileInfo*> vecFileInfo;
 };
