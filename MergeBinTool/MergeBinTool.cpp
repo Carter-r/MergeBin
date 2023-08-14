@@ -47,9 +47,11 @@ void MergeBinTool::dropEvent(QDropEvent* event)
 	if (mimeData->hasUrls())
 	{
 		QList<QUrl> urls = mimeData->urls();
-		QString fileName = urls.at(0).toLocalFile();
-
-		load(fileName);
+		foreach(QUrl u, urls)
+		{
+			QString filepath = u.toLocalFile();
+			load(filepath);
+		}
 	}
 }
 
@@ -163,64 +165,130 @@ bool MergeBinTool::load(const QString& fileName)
 
 void MergeBinTool::mergeBinFile()
 {
-	if (ui.lineEditOutPath->text().isEmpty() || ui.lineEditMergeFile->text().isEmpty()
-		|| ui.tableWidgetFileInfo->rowCount() == 0 || vecFileInfo.size() == 0)
+	// clear warning text
+	ui.labelWarningOutput->setText("");
+	ui.pushButtonMerge->setEnabled(false);
+
+	// check parameter
+	if (ui.tableWidgetFileInfo->rowCount() == 0 || vecFileInfo.size() == 0)
 	{
-		return;
+		ui.labelWarningOutput->setText(QStringLiteral("请添加需要合并的文件"));
+		QPalette pe;
+		pe.setColor(QPalette::WindowText, Qt::red);
+		ui.labelWarningOutput->setPalette(pe);
+		goto mergeBinFileEnd;
 	}
 
-	QDir dirOutPath(ui.lineEditOutPath->text());
-	if (!dirOutPath.exists())
+	if (ui.lineEditOutPath->text().isEmpty())
 	{
-		return;
+		ui.labelWarningOutput->setText(QStringLiteral("输出路径为空"));
+		QPalette pe;
+		pe.setColor(QPalette::WindowText, Qt::red);
+		ui.labelWarningOutput->setPalette(pe);
+		goto mergeBinFileEnd;
 	}
 
-	QString strOutFile = ui.lineEditOutPath->text();
-	if (strOutFile.at(strOutFile.size() - 1) == '\\')
-		strOutFile = strOutFile + ui.lineEditMergeFile->text();
-	else
-		strOutFile = strOutFile + "\\" + ui.lineEditMergeFile->text();
-	if (checkFileExist(strOutFile))
+	if (ui.lineEditMergeFile->text().isEmpty())
 	{
-		return;
+		ui.labelWarningOutput->setText(QStringLiteral("合并文件名为空"));
+		QPalette pe;
+		pe.setColor(QPalette::WindowText, Qt::red);
+		ui.labelWarningOutput->setPalette(pe);
+		goto mergeBinFileEnd;
 	}
 
-	for (int i = 0; i < vecFileInfo.size(); ++i)
 	{
-		if (!checkFileExist(vecFileInfo[i]->getFileName().c_str()))
+		QDir dirOutPath(ui.lineEditOutPath->text());
+		if (!dirOutPath.exists())
 		{
-			return;
+			ui.labelWarningOutput->setText(QStringLiteral("输出路径不存在"));
+			QPalette pe;
+			pe.setColor(QPalette::WindowText, Qt::red);
+			ui.labelWarningOutput->setPalette(pe);
+			goto mergeBinFileEnd;
 		}
 	}
 
-	QFile outputFile(strOutFile);
-	if (!outputFile.open(QIODevice::WriteOnly))
 	{
-		return;
-	}
-
-	QDataStream outputDataStream(&outputFile);
-	for (int i = 0; i < vecFileInfo.size(); ++i)
-	{
-		QLineEdit* pLineEdFileHead = qobject_cast<QLineEdit*>(ui.tableWidgetFileInfo->cellWidget(i, 0));
-		std::string strFileHead = pLineEdFileHead->text().toStdString();
-		outputDataStream.writeRawData(strFileHead.c_str(), strFileHead.length());
-
-		QFile inputFile(vecFileInfo[i]->getFileName().c_str());
-
-		if (!inputFile.open(QIODevice::ReadOnly))
+		QString strOutFile = ui.lineEditOutPath->text();
+		if (strOutFile.at(strOutFile.size() - 1) == '\\')
+			strOutFile = strOutFile + ui.lineEditMergeFile->text();
+		else
+			strOutFile = strOutFile + "\\" + ui.lineEditMergeFile->text();
+		if (checkFileExist(strOutFile))
 		{
-			outputFile.close();
-			return;
+			ui.labelWarningOutput->setText(QStringLiteral("输出路径下存在同名的合并文件名"));
+			QPalette pe;
+			pe.setColor(QPalette::WindowText, Qt::red);
+			ui.labelWarningOutput->setPalette(pe);
+			goto mergeBinFileEnd;
 		}
 
-		//QDataStream inputDataStream(&inputFile);
-		QByteArray byteArray = inputFile.readAll();
-		outputDataStream.writeRawData(byteArray.data(), byteArray.size());
-		inputFile.close();
+		for (int i = 0; i < vecFileInfo.size(); ++i)
+		{
+			if (!checkFileExist(vecFileInfo[i]->getFileName().c_str()))
+			{
+				std::string strFile = "文件\"";
+				strFile += vecFileInfo[i]->getFileName();
+				strFile += "\"不存在";
+				ui.labelWarningOutput->setText(QString::fromLocal8Bit(strFile.c_str()));
+				QPalette pe;
+				pe.setColor(QPalette::WindowText, Qt::red);
+				ui.labelWarningOutput->setPalette(pe);
+				goto mergeBinFileEnd;
+			}
+		}
+
+		QFile outputFile(strOutFile);
+		if (!outputFile.open(QIODevice::WriteOnly))
+		{
+			std::string strFile = "打开文件\"";
+			strFile += strOutFile.toStdString();
+			strFile += "\"失败";
+			ui.labelWarningOutput->setText(QString::fromLocal8Bit(strFile.c_str()));
+			QPalette pe;
+			pe.setColor(QPalette::WindowText, Qt::red);
+			ui.labelWarningOutput->setPalette(pe);
+			goto mergeBinFileEnd;
+		}
+
+		QDataStream outputDataStream(&outputFile);
+		for (int i = 0; i < vecFileInfo.size(); ++i)
+		{
+			QLineEdit* pLineEdFileHead = qobject_cast<QLineEdit*>(ui.tableWidgetFileInfo->cellWidget(i, 0));
+			std::string strFileHead = pLineEdFileHead->text().toStdString();
+			outputDataStream.writeRawData(strFileHead.c_str(), strFileHead.length());
+
+			QFile inputFile(vecFileInfo[i]->getFileName().c_str());
+
+			if (!inputFile.open(QIODevice::ReadOnly))
+			{
+				std::string strFile = "打开文件\"";
+				strFile += vecFileInfo[i]->getFileName();
+				strFile += "\"失败";
+				ui.labelWarningOutput->setText(QString::fromLocal8Bit(strFile.c_str()));
+				QPalette pe;
+				pe.setColor(QPalette::WindowText, Qt::red);
+				ui.labelWarningOutput->setPalette(pe);
+
+				outputFile.close();
+				goto mergeBinFileEnd;
+			}
+
+			//QDataStream inputDataStream(&inputFile);
+			QByteArray byteArray = inputFile.readAll();
+			outputDataStream.writeRawData(byteArray.data(), byteArray.size());
+			inputFile.close();
+		}
+
+		outputFile.close();
 	}
 
-	outputFile.close();
+	ui.labelWarningOutput->setText(QStringLiteral("合并文件成功！"));
+
+mergeBinFileEnd:
+	ui.pushButtonMerge->setEnabled(true);
+	return;
 }
 
 bool MergeBinTool::checkFileExist(const QString& fileName)
