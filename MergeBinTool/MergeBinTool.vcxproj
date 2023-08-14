@@ -83,6 +83,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="TableWidgetFileInfo.cpp" />
     <QtRcc Include="MergeBinTool.qrc" />
     <QtUic Include="MergeBinTool.ui" />
     <QtMoc Include="MergeBinTool.h" />
@@ -92,6 +93,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FileInfo.h" />
+    <QtMoc Include="TableWidgetFileInfo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

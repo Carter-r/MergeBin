@@ -19,7 +19,6 @@ public:
     void dropEvent(QDropEvent* event) Q_DECL_OVERRIDE;
 
 private:
-    void initTableFileInfo();
 	bool load(const QString& fileName);
     bool checkFileExist(const QString& fileName);
 
@@ -27,9 +26,10 @@ private slots:
 	void fileOpen();
 	void fileDelete();
 	void mergeBinFile();
+    void slotTableMoveRow(int nFrom, int nTo);
 
 private:
     Ui::MergeBinToolClass ui;
 
-    vector<FileInfo*> vecFileInfo;
+    list<FileInfo*> listFileInfo;
 };

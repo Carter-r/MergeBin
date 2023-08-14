@@ -1,6 +1,7 @@
 #include "MergeBinTool.h"
 #include <QFileDialog>
 #include <QMimeData>
+#include <QTableWidget>
 
 MergeBinTool::MergeBinTool(QWidget *parent)
     : QMainWindow(parent)
@@ -9,22 +10,22 @@ MergeBinTool::MergeBinTool(QWidget *parent)
 
 	this->setAcceptDrops(true);
 
-	initTableFileInfo();
-
 	ui.lineEditOutPath->setFocus();
 
 	connect(ui.actOpen, SIGNAL(triggered()), this, SLOT(fileOpen()));
 	connect(ui.pushButtonMerge, SIGNAL(clicked()), this, SLOT(mergeBinFile()));
+	connect(ui.tableWidgetFileInfo, SIGNAL(sigMoveRow(int, int)), this, SLOT(slotTableMoveRow(int, int)));
 }
 
 MergeBinTool::~MergeBinTool()
 {
-	for (int i = 0; i < vecFileInfo.size(); ++i)
+	list<FileInfo*>::iterator it = listFileInfo.begin();
+	for (; it != listFileInfo.end(); ++it)
 	{
-		if (vecFileInfo[i] != nullptr)
+		if ((*it) != nullptr)
 		{
-			delete vecFileInfo[i];
-			vecFileInfo[i] = nullptr;
+			delete (*it);
+			(*it) = nullptr;
 		}
 	}
 }
@@ -55,47 +56,6 @@ void MergeBinTool::dropEvent(QDropEvent* event)
 	}
 }
 
-void MergeBinTool::initTableFileInfo()
-{
-    QStringList strHeader;
-    strHeader << QStringLiteral("文件头") << QStringLiteral("文件数据") << QStringLiteral("长度信息(B)") << QStringLiteral("删除");
-	int nColCouunt = strHeader.size();
-	//ui.tableWidgetFileInfo->setShowGrid(false);
-	ui.tableWidgetFileInfo->setColumnCount(nColCouunt);            //设置列数
-	ui.tableWidgetFileInfo->verticalHeader()->hide();              //将默认序号隐藏
-	//ui.tableWidgetFileInfo->horizontalHeader()->hide();
-	ui.tableWidgetFileInfo->setHorizontalHeaderLabels(strHeader);  //添加表头
-	//ui.tableWidgetFileInfo->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft);    //表头信息显示居中靠左
-	//ui.tableWidgetFileInfo->horizontalHeader()->setStretchLastSection(true);           //设置最后一列自适应
-	ui.tableWidgetFileInfo->verticalHeader()->setDefaultSectionSize(10);          //设置一行默认高度
-	ui.tableWidgetFileInfo->setSelectionBehavior(QAbstractItemView::SelectRows);       //选取一整行
-	ui.tableWidgetFileInfo->setSelectionMode(QAbstractItemView::NoSelection);
-	ui.tableWidgetFileInfo->setEditTriggers(QAbstractItemView::NoEditTriggers);	    //不可编辑
-	//ui.tableWidgetFileInfo->setAlternatingRowColors(true);                             //隔行变色
-	//ui.tableWidgetFileInfo->setStyleSheet("QHeaderView::section{background-color:rgb(227, 247, 255);border:1px solid black;}");
-	ui.tableWidgetFileInfo->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-	ui.tableWidgetFileInfo->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);
-	ui.tableWidgetFileInfo->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Interactive);
-	ui.tableWidgetFileInfo->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
-	ui.tableWidgetFileInfo->setColumnWidth(0, 200);
-	ui.tableWidgetFileInfo->setColumnWidth(1, 200);
-	ui.tableWidgetFileInfo->setColumnWidth(2, 80);
-	ui.tableWidgetFileInfo->setColumnWidth(3, 40);
-	ui.tableWidgetFileInfo->horizontalHeader()->setHighlightSections(false);
-	//ui.tableWidgetFileInfo->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
-	//ui.tableWidgetFileInfo->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-	//ui.tableWidgetFileInfo->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-	ui.tableWidgetFileInfo->horizontalHeader()->setStyleSheet("QHeaderView::section{background-color:#E0E0E0;border:none;}");
-	ui.tableWidgetFileInfo->horizontalHeader()->setSectionsClickable(false);
-
-	ui.tableWidgetFileInfo->setDragDropMode(QAbstractItemView::InternalMove);
-	ui.tableWidgetFileInfo->setAcceptDrops(true);
-
-	//ui.tableWidgetFileInfo->setColumnWidth(0, 197);
-	//ui.tableWidgetFileInfo->setColumnWidth(1, 119);
-	//ui.tableWidgetFileInfo->setColumnWidth(2, 125);
-}
-
 bool MergeBinTool::load(const QString& fileName)
 {
 	if (!QFile::exists(fileName))
@@ -117,7 +77,7 @@ bool MergeBinTool::load(const QString& fileName)
 	}
 
 	file.close();
-	vecFileInfo.push_back(pFileInfo);
+	listFileInfo.push_back(pFileInfo);
 
 	QFileInfo qFileInfo(fileName);
 
@@ -169,35 +129,64 @@ void MergeBinTool::mergeBinFile()
 	ui.labelWarningOutput->setText("");
 	ui.pushButtonMerge->setEnabled(false);
 
-	// check parameter
-	if (ui.tableWidgetFileInfo->rowCount() == 0 || vecFileInfo.size() == 0)
 	{
-		ui.labelWarningOutput->setText(QStringLiteral("请添加需要合并的文件"));
-		QPalette pe;
-		pe.setColor(QPalette::WindowText, Qt::red);
-		ui.labelWarningOutput->setPalette(pe);
-		goto mergeBinFileEnd;
-	}
+		// check source file
+		if (ui.tableWidgetFileInfo->rowCount() == 0 || listFileInfo.size() == 0)
+		{
+			ui.labelWarningOutput->setText(QStringLiteral("请添加需要合并的文件"));
+			QPalette pe;
+			pe.setColor(QPalette::WindowText, Qt::red);
+			ui.labelWarningOutput->setPalette(pe);
+			goto mergeBinFileEnd;
+		}
 
-	if (ui.lineEditOutPath->text().isEmpty())
-	{
-		ui.labelWarningOutput->setText(QStringLiteral("输出路径为空"));
-		QPalette pe;
-		pe.setColor(QPalette::WindowText, Qt::red);
-		ui.labelWarningOutput->setPalette(pe);
-		goto mergeBinFileEnd;
-	}
+		// check file head data
+		for (int i = 0; i < ui.tableWidgetFileInfo->rowCount(); ++i)
+		{
+			QLineEdit* pLineEdFileHead = qobject_cast<QLineEdit*>(ui.tableWidgetFileInfo->cellWidget(i, 0));
+			QString strFileHead = pLineEdFileHead->text();
+			if (strFileHead.size() % 2 != 0)
+			{
+				std::string strFWarning = "第";
+				strFWarning += std::to_string(i + 1);
+				strFWarning += "行文件头数据长度为单数";
+				ui.labelWarningOutput->setText(QString::fromLocal8Bit(strFWarning.c_str()));
+				QPalette pe;
+				pe.setColor(QPalette::WindowText, Qt::red);
+				ui.labelWarningOutput->setPalette(pe);
+				pLineEdFileHead->setFocus();
+				goto mergeBinFileEnd;
+			}
+		}
 
-	if (ui.lineEditMergeFile->text().isEmpty())
-	{
-		ui.labelWarningOutput->setText(QStringLiteral("合并文件名为空"));
-		QPalette pe;
-		pe.setColor(QPalette::WindowText, Qt::red);
-		ui.labelWarningOutput->setPalette(pe);
-		goto mergeBinFileEnd;
-	}
+		// check source file exist
+		list<FileInfo*>::iterator it = listFileInfo.begin();
+		for (; it != listFileInfo.end(); ++it)
+		{
+			if (!checkFileExist((*it)->getFileName().c_str()))
+			{
+				std::string strFile = "文件\"";
+				strFile += (*it)->getFileName();
+				strFile += "\"不存在";
+				ui.labelWarningOutput->setText(QString::fromLocal8Bit(strFile.c_str()));
+				QPalette pe;
+				pe.setColor(QPalette::WindowText, Qt::red);
+				ui.labelWarningOutput->setPalette(pe);
+				goto mergeBinFileEnd;
+			}
+		}
 
-	{
+		// check output path
+		if (ui.lineEditOutPath->text().isEmpty())
+		{
+			ui.labelWarningOutput->setText(QStringLiteral("输出路径为空"));
+			QPalette pe;
+			pe.setColor(QPalette::WindowText, Qt::red);
+			ui.labelWarningOutput->setPalette(pe);
+			ui.lineEditOutPath->setFocus();
+			goto mergeBinFileEnd;
+		}
+
 		QDir dirOutPath(ui.lineEditOutPath->text());
 		if (!dirOutPath.exists())
 		{
@@ -205,11 +194,21 @@ void MergeBinTool::mergeBinFile()
 			QPalette pe;
 			pe.setColor(QPalette::WindowText, Qt::red);
 			ui.labelWarningOutput->setPalette(pe);
+			ui.lineEditOutPath->setFocus();
 			goto mergeBinFileEnd;
 		}
-	}
 
-	{
+		// check output file
+		if (ui.lineEditMergeFile->text().isEmpty())
+		{
+			ui.labelWarningOutput->setText(QStringLiteral("合并文件名为空"));
+			QPalette pe;
+			pe.setColor(QPalette::WindowText, Qt::red);
+			ui.labelWarningOutput->setPalette(pe);
+			ui.lineEditMergeFile->setFocus();
+			goto mergeBinFileEnd;
+		}
+
 		QString strOutFile = ui.lineEditOutPath->text();
 		if (strOutFile.at(strOutFile.size() - 1) == '\\')
 			strOutFile = strOutFile + ui.lineEditMergeFile->text();
@@ -221,24 +220,11 @@ void MergeBinTool::mergeBinFile()
 			QPalette pe;
 			pe.setColor(QPalette::WindowText, Qt::red);
 			ui.labelWarningOutput->setPalette(pe);
+			ui.lineEditMergeFile->setFocus();
 			goto mergeBinFileEnd;
 		}
 
-		for (int i = 0; i < vecFileInfo.size(); ++i)
-		{
-			if (!checkFileExist(vecFileInfo[i]->getFileName().c_str()))
-			{
-				std::string strFile = "文件\"";
-				strFile += vecFileInfo[i]->getFileName();
-				strFile += "\"不存在";
-				ui.labelWarningOutput->setText(QString::fromLocal8Bit(strFile.c_str()));
-				QPalette pe;
-				pe.setColor(QPalette::WindowText, Qt::red);
-				ui.labelWarningOutput->setPalette(pe);
-				goto mergeBinFileEnd;
-			}
-		}
-
+		// start to merge
 		QFile outputFile(strOutFile);
 		if (!outputFile.open(QIODevice::WriteOnly))
 		{
@@ -249,22 +235,30 @@ void MergeBinTool::mergeBinFile()
 			QPalette pe;
 			pe.setColor(QPalette::WindowText, Qt::red);
 			ui.labelWarningOutput->setPalette(pe);
+			ui.lineEditMergeFile->setFocus();
 			goto mergeBinFileEnd;
 		}
 
 		QDataStream outputDataStream(&outputFile);
-		for (int i = 0; i < vecFileInfo.size(); ++i)
+		it = listFileInfo.begin();
+		for (int i = 0; it != listFileInfo.end() && i < ui.tableWidgetFileInfo->rowCount(); ++it, ++i)
 		{
 			QLineEdit* pLineEdFileHead = qobject_cast<QLineEdit*>(ui.tableWidgetFileInfo->cellWidget(i, 0));
-			std::string strFileHead = pLineEdFileHead->text().toStdString();
-			outputDataStream.writeRawData(strFileHead.c_str(), strFileHead.length());
+			QString strFileHead = pLineEdFileHead->text();
+			std::string sFileHead;
+			sFileHead.resize(strFileHead.size() / 2);
+			for (int j = 0; j < strFileHead.size(); j += 2)
+			{
+				sFileHead[j / 2] = strFileHead.mid(j, 2).toUInt(nullptr, 16) & 0xFF;
+			}
+			outputDataStream.writeRawData(sFileHead.c_str(), sFileHead.length());
 
-			QFile inputFile(vecFileInfo[i]->getFileName().c_str());
+			QFile inputFile((*it)->getFileName().c_str());
 
 			if (!inputFile.open(QIODevice::ReadOnly))
 			{
 				std::string strFile = "打开文件\"";
-				strFile += vecFileInfo[i]->getFileName();
+				strFile += (*it)->getFileName();
 				strFile += "\"失败";
 				ui.labelWarningOutput->setText(QString::fromLocal8Bit(strFile.c_str()));
 				QPalette pe;
@@ -282,13 +276,34 @@ void MergeBinTool::mergeBinFile()
 		}
 
 		outputFile.close();
-	}
 
-	ui.labelWarningOutput->setText(QStringLiteral("合并文件成功！"));
+		ui.labelWarningOutput->setText(QStringLiteral("合并文件成功！"));
+		QPalette pe;
+		pe.setColor(QPalette::WindowText, Qt::black);
+		ui.labelWarningOutput->setPalette(pe);
+	}
 
 mergeBinFileEnd:
 	ui.pushButtonMerge->setEnabled(true);
 	return;
+}
+
+void MergeBinTool::slotTableMoveRow(int nFrom, int nTo)
+{
+	if (nFrom < nTo)
+	{
+		list<FileInfo*>::iterator itFrom = std::next(listFileInfo.begin(), nFrom);
+		list<FileInfo*>::iterator itTo = std::next(listFileInfo.begin(), nTo + 1);
+		listFileInfo.insert(itTo, itFrom, std::next(itFrom, 1));
+		listFileInfo.erase(itFrom);
+	}
+	else
+	{
+		list<FileInfo*>::iterator itFrom = std::next(listFileInfo.begin(), nFrom);
+		list<FileInfo*>::iterator itTo = std::next(listFileInfo.begin(), nTo);
+		listFileInfo.insert(itTo, itFrom, std::next(itFrom, 1));
+		listFileInfo.erase(itFrom);
+	}
 }
 
 bool MergeBinTool::checkFileExist(const QString& fileName)
@@ -325,12 +340,13 @@ void MergeBinTool::fileDelete()
 	int row = index.row();
 	int column = index.column();
 
-	if (vecFileInfo[row] != nullptr)
+	list<FileInfo*>::iterator it = std::next(listFileInfo.begin(), row);
+	if ((*it) != nullptr)
 	{
-		delete vecFileInfo[row];
-		vecFileInfo[row] = nullptr;
+		delete (*it);
+		(*it) = nullptr;
 	}
-	vecFileInfo.erase(vecFileInfo.begin() + row);
+	listFileInfo.erase(std::next(listFileInfo.begin(), row));
 
 	ui.tableWidgetFileInfo->removeRow(row);
 }
