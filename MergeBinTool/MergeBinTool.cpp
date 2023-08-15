@@ -9,6 +9,7 @@ MergeBinTool::MergeBinTool(QWidget *parent)
     ui.setupUi(this);
 
 	this->setAcceptDrops(true);
+	this->setWindowIcon(QIcon(":/image/resource/fileMerge.png"));
 
 	ui.lineEditOutPath->setFocus();
 
@@ -85,6 +86,7 @@ bool MergeBinTool::load(const QString& fileName)
 	QLineEdit* pLineEdit = new QLineEdit(ui.tableWidgetFileInfo);
 	QRegExp regx("^[0-9a-fA-F]+$");
 	pLineEdit->setValidator(new QRegExpValidator(regx, pLineEdit));
+	pLineEdit->setPlaceholderText(QStringLiteral("输入16进制数据，以字节为单位"));
 	pLineEdit->setFocus();
 
 	// file name
