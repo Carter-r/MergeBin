@@ -15,5 +15,5 @@ signals:
 	void sigMoveRow(int nFrom, int nTo);
 
 protected:
-	void dropEvent(QDropEvent* event);
+	void dropEvent(QDropEvent* event) override;
 };

@@ -2,6 +2,8 @@
 #include <QFileDialog>
 #include <QMimeData>
 #include <QTableWidget>
+#include <QLabel>
+#include "LineEditFileHead.h"
 
 MergeBinTool::MergeBinTool(QWidget *parent)
     : QMainWindow(parent)
@@ -10,6 +12,9 @@ MergeBinTool::MergeBinTool(QWidget *parent)
 
 	this->setAcceptDrops(true);
 	this->setWindowIcon(QIcon(":/image/resource/fileMerge.png"));
+
+	ui.labelOutputPath->adjustSize();
+	ui.labelOutputFileName->adjustSize();
 
 	ui.lineEditOutPath->setFocus();
 
@@ -83,11 +88,7 @@ bool MergeBinTool::load(const QString& fileName)
 	QFileInfo qFileInfo(fileName);
 
 	// file head
-	QLineEdit* pLineEdit = new QLineEdit(ui.tableWidgetFileInfo);
-	QRegExp regx("^[0-9a-fA-F]+$");
-	pLineEdit->setValidator(new QRegExpValidator(regx, pLineEdit));
-	pLineEdit->setPlaceholderText(QStringLiteral("输入16进制数据，以字节为单位"));
-	pLineEdit->setFocus();
+	LineEditFileHead* pLineEdit = new LineEditFileHead(ui.tableWidgetFileInfo);
 
 	// file name
 	QTableWidgetItem* pItemFileName = new QTableWidgetItem(qFileInfo.fileName());
@@ -112,6 +113,10 @@ bool MergeBinTool::load(const QString& fileName)
 	QPixmap scaledPixmapDelete = pixmDelete.scaled(QSize(20, 20));
 	pButtonDelete->setIcon(scaledPixmapDelete);
 	pButtonDelete->setIconSize(scaledPixmapDelete.size());
+	pButtonDelete->setStyleSheet("QPushButton{background-color:#FFFFFF;border:1px solid #FFFFFF;}"
+		"QPushButton:hover{background-color:#CCE5FF;border:1px solid #000000;}"
+		"QPushButton:pressed{background-color:#CCE5FF;border:1px solid #000000;");
+	//pButtonDelete->setFlat(true);
 	connect(pButtonDelete, SIGNAL(clicked()), this, SLOT(fileDelete()));
 
 	// insert table
@@ -145,8 +150,9 @@ void MergeBinTool::mergeBinFile()
 		// check file head data
 		for (int i = 0; i < ui.tableWidgetFileInfo->rowCount(); ++i)
 		{
-			QLineEdit* pLineEdFileHead = qobject_cast<QLineEdit*>(ui.tableWidgetFileInfo->cellWidget(i, 0));
+			LineEditFileHead* pLineEdFileHead = qobject_cast<LineEditFileHead*>(ui.tableWidgetFileInfo->cellWidget(i, 0));
 			QString strFileHead = pLineEdFileHead->text();
+			strFileHead.replace(" ", "");
 			if (strFileHead.size() % 2 != 0)
 			{
 				std::string strFWarning = "第";
@@ -245,8 +251,9 @@ void MergeBinTool::mergeBinFile()
 		it = listFileInfo.begin();
 		for (int i = 0; it != listFileInfo.end() && i < ui.tableWidgetFileInfo->rowCount(); ++it, ++i)
 		{
-			QLineEdit* pLineEdFileHead = qobject_cast<QLineEdit*>(ui.tableWidgetFileInfo->cellWidget(i, 0));
+			LineEditFileHead* pLineEdFileHead = qobject_cast<LineEditFileHead*>(ui.tableWidgetFileInfo->cellWidget(i, 0));
 			QString strFileHead = pLineEdFileHead->text();
+			strFileHead.replace(" ", "");
 			std::string sFileHead;
 			sFileHead.resize(strFileHead.size() / 2);
 			for (int j = 0; j < strFileHead.size(); j += 2)

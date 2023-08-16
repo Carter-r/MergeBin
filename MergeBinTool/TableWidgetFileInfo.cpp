@@ -12,16 +12,17 @@ TableWidgetFileInfo::TableWidgetFileInfo(QWidget *parent)
 	this->verticalHeader()->hide();              //将默认序号隐藏
 	//this->horizontalHeader()->hide();
 	this->verticalHeader()->setDefaultSectionSize(10);          //设置一行默认高度
-	this->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+	this->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+	this->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
 	this->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive);
 	this->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Interactive);
-	this->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Fixed);
-	this->setColumnWidth(0, 200);
-	this->setColumnWidth(1, 200);
-	this->setColumnWidth(2, 80);
-	this->setColumnWidth(3, 40);
+	//this->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Interactive);
+	this->horizontalHeader()->resizeSection(0, 266);
+	this->horizontalHeader()->resizeSection(1, 180);
+	this->horizontalHeader()->resizeSection(2, 90);
+	this->horizontalHeader()->resizeSection(3, 40);
 	this->horizontalHeader()->setHighlightSections(false);
-	this->horizontalHeader()->setStyleSheet("QHeaderView::section{background-color:#E0E0E0;border:none;}");
+	this->horizontalHeader()->setStyleSheet("QHeaderView::section{background-color:#FFFFFF;border:0px solid #E0E0E0;border-right:1px solid #E0E0E0;border-bottom:1px solid #E0E0E0;}");
 	this->horizontalHeader()->setSectionsClickable(false);
 
 	this->setSelectionMode(QAbstractItemView::SingleSelection);
